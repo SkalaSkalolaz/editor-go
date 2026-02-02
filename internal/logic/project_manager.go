@@ -107,3 +107,10 @@ func (pm *ProjectManager) GetContextFiles() []string {
 	for k := range pm.ContextFiles { res = append(res, k) }
 	return res
 }
+
+// ClearContextFiles очищает список файлов, используемых в качестве контекста для AI.
+func (pm *ProjectManager) ClearContextFiles() {
+	// Поле называется ContextFiles и является картой (map).
+	// Для очистки мы пересоздаем ее.
+	pm.ContextFiles = make(map[string]bool)
+}
