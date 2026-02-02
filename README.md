@@ -32,7 +32,7 @@ It provides a multi-tab editor, project/folder view, integrated run output, and 
 
 ## Installation
 bash
-git clone https://github.com/SkalaSkalolaz/editorgui.git
+git clone https://github.com/SkalaSkalolaz/editor-go.git
 cd editor
 go build -o editor
 
