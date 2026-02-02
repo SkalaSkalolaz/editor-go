@@ -16,15 +16,39 @@ import (
 // --- Constants & Configuration ---
 
 const (
-	DefaultSystemPrompt = `Вы — универсальный AI-ассистент.
-**Основные принципы:**
-1. Помогайте: Давайте точные и практичные ответы.
-2. Будьте безопасны: Отказывайтесь от вредоносных запросов.
-3. Структура: Используйте Markdown, для кода всегда давайте пояснения.
-4. Если нет иных указаний, то пишите код на языке Go
-`
+
+DefaultSystemPrompt = `You are a powerful AI assistant for a code editor with LLM support.
+**Core Principles:**
+1. **Coding**: Create accurate, efficient, and well-structured code in Go language.
+2. **Context Understanding**: Analyze the current file, code context, and user tasks.
+3. **Editor Integration**: Consider the current line, selected fragment, and project files when generating code.
+4. **Safety**: Refuse requests that may be malicious or disrupt editor functionality.
+5. **Structure**: Use Markdown for explanations and comments. Always provide explanations for code blocks.
+6. **Compatibility**: Ensure your code follows Go standards and can be successfully compiled.
+7. **Project Work**: When necessary, refer to other project files to ensure full functionality.
+
+**Additional Instructions:**
+- If the user provides a code snippet, analyze it and suggest improvements.
+- If the request is unclear, ask clarifying questions.
+- Provide only the code that is needed by the user.
+- Do not add unnecessary explanations if they are not required.`
+
+	CodeCompletionSystemPrompt = `You are a code completion engine. Your ONLY job is to complete code.
+
+STRICT RULES:
+1. Return ONLY the code that continues from the cursor position
+2. Do NOT repeat any existing code
+3. Do NOT include explanations, markdown, or backticks
+4. If you need to explain something, use ONLY code comments
+5. Match the existing code style exactly
+6. Keep completions concise and relevant
+7. If unsure, provide the most likely completion based on context`
+
 	// Таймаут для HTTP клиента
 	defaultTimeout = 120 * time.Second
+
+    // Короткий таймаут для inline completion
+    completionTimeout = 30 * time.Second
 )
 
 // Shared HTTP client to avoid socket exhaustion
@@ -34,27 +58,31 @@ var httpClient = &http.Client{
 
 // --- Public API ---
 
-// SendMessageToLLM — основная точка входа, вызываемая из UI (actions.go).
-// Она инкапсулирует выбор провайдера и создание контекста.
+// SendMessageToLLM — основная точка входа
+// timeout = 0 означает использовать defaultTimeout
 func SendMessageToLLM(prompt, providerName, model, apiKey string) (string, error) {
-	// Создаем контекст с таймаутом, чтобы UI не завис навечно при сетевых проблемах
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
+    return SendMessageToLLMWithTimeout(prompt, providerName, model, apiKey, defaultTimeout)
+}
 
-	// Формируем историю сообщений. 
-	// В текущей версии редактора это single-turn chat, но структура готова к расширению.
-	history := []Message{
-		{Role: "user", Content: prompt},
-	}
+// SendMessageToLLMWithTimeout — версия с кастомным таймаутом
+func SendMessageToLLMWithTimeout(prompt, providerName, model, apiKey string, timeout time.Duration) (string, error) {
+    if timeout <= 0 {
+        timeout = defaultTimeout
+    }
+    
+    ctx, cancel := context.WithTimeout(context.Background(), timeout)
+    defer cancel()
 
-	// Фабрика провайдеров
-	provider, err := newProvider(providerName, model, apiKey)
-	if err != nil {
-		return "", fmt.Errorf("provider error: %w", err)
-	}
+    history := []Message{
+        {Role: "user", Content: prompt},
+    }
 
-	// Отправка
-	return provider.Send(ctx, history, nil)
+    provider, err := newProvider(providerName, model, apiKey)
+    if err != nil {
+        return "", fmt.Errorf("provider error: %w", err)
+    }
+
+    return provider.Send(ctx, history, nil)
 }
 
 // --- Internal Types ---
