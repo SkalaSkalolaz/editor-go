@@ -89,3 +89,13 @@ func (pr *ProcessRunner) IsRunning() bool {
 	defer pr.mu.Unlock()
 	return pr.isRunning
 }
+
+// StopAll останавливает все запущенные процессы
+func (pr *ProcessRunner) StopAll() {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	
+	if pr.cancelFunc != nil {
+		pr.cancelFunc()
+	}
+}
